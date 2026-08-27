@@ -1,9 +1,12 @@
 # generate-catalog
 
 Regenerates `operator/internal/catalog/default-catalog.json` from the NGC catalog
-search API: adds every `nvaie_supported` Helm chart (under a deployable NGC repo
-path) as a catalog entry with a single "Supported" chip, preserving all existing
-entries. Run manually or via the weekly `refresh-catalog` CI workflow; commit the result.
+search API. Every generator-owned entry — an `nvidia`-library entry carrying the
+single `{code:"supported",name:"Supported"}` chip — is rebuilt from the current
+NGC data each run, so changed fields refresh and charts NGC no longer lists are
+removed. Hand-added entries (no Supported chip) and the entire `suse-ai` library
+are preserved untouched. Run manually or via the weekly `refresh-catalog` CI
+workflow; commit the result.
 
 ## Usage
 
@@ -12,6 +15,7 @@ entries. Run manually or via the weekly `refresh-catalog` CI workflow; commit th
 
 Flags:
 - `-catalog` path to `default-catalog.json` (default `internal/catalog/default-catalog.json`).
+- `-overrides` path to `catalog-overrides.json` (default `internal/catalog/catalog-overrides.json`).
 - `-page-size` NGC search page size (default 100).
 
 ## What it does
@@ -25,10 +29,36 @@ Flags:
    - org/public/gated paths are kept.
 4. Derives NGC-only fields (name, slug, description, logo, last-updated, repo URL);
    the project/docs/source/changelog/reference URLs NGC does not provide are left empty.
-5. Merges into `default-catalog.json`: appends missing entries and stamps the single
-   `{code:"supported",name:"Supported"}` chip on matched entries. Existing entries'
-   other fields and the entire `suse-ai` library are never modified. The `nvidia`
-   array is sorted by `slug_name`, so re-runs with unchanged NGC data produce no diff.
+5. Applies any pinned fields from `catalog-overrides.json` on top of the derived
+   values (see Overrides below).
+6. Syncs `default-catalog.json`:
+   - generator-owned entries are discarded and rebuilt from the derived set, so
+     every NGC-derivable field refreshes and an owned chart NGC no longer lists is
+     removed;
+   - a hand-added (unowned) entry is preserved, unless NGC now reports that chart as
+     supported, in which case the derived entry takes over the slug (promotion);
+   - the `nvidia` array is sorted by `slug_name`, so re-runs with unchanged NGC data
+     and overrides produce no diff.
+
+## Overrides
+
+`internal/catalog/catalog-overrides.json` is the sole place manual curation lives,
+so `default-catalog.json` can stay fully machine-owned. It maps a `slug_name` to a
+partial catalog entry — only the JSON keys present are pinned:
+
+    {
+      "some-chart-slug": {
+        "description": "A better, hand-written description.",
+        "documentation_url": "https://docs.example.com/some-chart"
+      }
+    }
+
+- Only the listed fields overwrite the NGC-derived values; every other field stays
+  fresh from the search API.
+- Pinning a field never affects removal: an override for a chart NGC no longer lists
+  does not resurrect it. Remove the stale override entry when convenient.
+- The file is read only by this tool; the operator does not embed it. An absent or
+  empty file (`{}`) means no overrides.
 
 ## Maintenance
 
