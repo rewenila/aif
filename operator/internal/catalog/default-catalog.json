@@ -1729,6 +1729,19 @@
       "description": "DeepStream intelligent video analytics Helm chart for Jetson devices with JetPack 5.x.",
       "packaging_format": "HELM_CHART",
       "repository_url": "https://helm.ngc.nvidia.com/nvidia"
+    },
+    {
+      "name": "CI Stale Check",
+      "slug_name": "zzz-ci-stale-check",
+      "description": "temp entry to exercise generator removal in CI",
+      "packaging_format": "HELM_CHART",
+      "repository_url": "https://helm.ngc.nvidia.com/nvidia",
+      "labels": [
+        {
+          "code": "supported",
+          "name": "Supported"
+        }
+      ]
     }
   ]
 }
